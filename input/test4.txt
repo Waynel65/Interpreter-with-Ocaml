@@ -1,0 +1,5 @@
+Push <unit>;
+Push <unit>;
+Log;
+Pop;
+Pop;

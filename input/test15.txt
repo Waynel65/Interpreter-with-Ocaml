@@ -1,0 +1,8 @@
+Push 4;
+Push 3;
+Neg;
+Mul;
+Neg;
+Push 8;
+Rem;
+Log;

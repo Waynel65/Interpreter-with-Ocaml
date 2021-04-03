@@ -1,0 +1,8 @@
+Push <true>;
+Push <false>;
+Log;
+Push 7;
+Push 8;
+Push "no";
+Pop;
+Sub;

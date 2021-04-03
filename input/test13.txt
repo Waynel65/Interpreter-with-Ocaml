@@ -1,0 +1,7 @@
+Push 10;
+Push "Hello";
+Push 20;
+Swap;
+Log;
+Div;
+Log;

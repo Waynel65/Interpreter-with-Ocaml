@@ -1,0 +1,5 @@
+Push 1;
+Push 4;
+Add;
+Swap;
+

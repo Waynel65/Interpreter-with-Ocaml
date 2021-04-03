@@ -1,0 +1,7 @@
+Push 10;
+Push 0;
+Swap;
+Pop;
+Push 9;
+Swap;
+Div;

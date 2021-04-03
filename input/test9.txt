@@ -1,0 +1,9 @@
+Push <true>;
+Push "false";
+Push 2;
+Push 5;
+Mul;
+Push 12;
+Swap;
+Rem;
+Log;

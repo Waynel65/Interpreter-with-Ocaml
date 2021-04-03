@@ -1,0 +1,7 @@
+Push 1;
+Push 8;
+Push 6;
+Sub;
+Neg;
+Add;
+Log;

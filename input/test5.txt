@@ -1,0 +1,5 @@
+Push 1;
+Push <true>;
+Swap;
+Log;
+Pop;

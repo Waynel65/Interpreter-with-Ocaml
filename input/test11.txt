@@ -1,0 +1,8 @@
+Push 10;
+Push 7;
+Div;
+Pop;
+Push 4;
+Push 6;
+Add;
+Log;

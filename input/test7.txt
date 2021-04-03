@@ -1,0 +1,5 @@
+Push 54;
+Push 50;
+Neg;
+Swap;
+Mul;
