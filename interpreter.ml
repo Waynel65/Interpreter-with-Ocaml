@@ -31,6 +31,10 @@ type 'a parser = char list -> ('a * char list) option
    THIS is how you would run a parser on a c_list
 *)
 
+let flip f y x = f x y
+
+let ($) f g = fun x -> f (g x)
+
 
 (* p1 takes in a char and outputs ['a * char list] option.
    'a is fed into a function, which can contain lots of parser and make choice which
@@ -68,6 +72,7 @@ let returnP (a: 'a):'a parser =
   fun c_list -> 
   match c_list with
   | x::rest -> Some(a,c_list)
+  | [] -> Some (a,[])
   | _ -> None
 
 
@@ -86,20 +91,13 @@ let read : char parser =
 
 (*readn parses out the first n characters and returns a char_list parser*)
 let rec readn (n:int): char list parser = 
-  (* if n > 0 then
-     read >>= fun c -> 
-     readn (n-1) >>= fun cs -> 
-     returnP (c::cs)
-
-     else
-     returnP [] *)
   if n > 0 then
-    let* c = read in
-    let* cs = readn (n-1) in
+    read >>= fun c -> 
+    readn (n-1) >>= fun cs -> 
     returnP (c::cs)
-  else
-    returnP [] 
 
+  else
+    returnP []
 
 (*satify function: checks if the first character follows the condition outlined by the
   the function f
@@ -156,6 +154,22 @@ let is_digit = function
   '0' .. '9' -> true | _ -> false
 
 
+(* this is perhaps not how you would define name*)
+type name = 
+    Name of string
+type const = 
+    I of int | B of bool | S of string | N of name | U of unit 
+
+type stack = 
+    Stack of const | Empty
+
+type command = 
+    Push of const | Pop | Swap | Log | Add | Sub | Mul | Div | Rem | Neg 
+
+type prog = 
+    Prog of command list
+
+
 
 let digit_p = sat is_digit
 let letter_p = sat is_alpha
@@ -169,6 +183,8 @@ let whitespace_p =
   charP ' ' <|> charP '\n' <|> charP '\t' <|> charP '\r'
 
 
+let semicolon_P = 
+  charP ';'
 
 let natural_numP = 
   many1 digit_p >>= fun xs -> returnP (int_of_string (implode xs))
@@ -178,28 +194,43 @@ let natural_numP =
 let intP = 
   natural_numP <|> (charP '-' >>= fun _ -> natural_numP >>= fun n -> returnP (-n))
 
+let nameP = 
+  letter_p >>= fun _ -> (letter_p <|> digit_p <|> charP '_' <|> charP '\'')
 
-let stringP (str:string): char list parser =
+
+let string_match (str:string): char list parser =
   let len=String.length str in 
   readn len >>= fun x->
   if (explode str)=x then returnP x
   else fail
 
-type const = 
-    I of int | B of bool | S of string | U of unit  (*still need to define name type*)
-
-type command = 
-    Push of const | Pop | Swap | Log | Add | Sub | Mul | Div | Rem | Neg 
-
 let boolP: bool parser = 
-  (stringP "<true>" >>= fun t -> returnP true) 
+  (string_match "<true>" >>= fun t -> returnP true) 
   <|> 
-  (stringP "<false>" >>= fun t -> returnP false)
+  (string_match "<false>" >>= fun t -> returnP false)
+
+let constP: const parser = 
+  (intP >>= fun x -> returnP (I x)) 
 
 
-(* let pushP: command parser = 
-   stringP "Push" >>= fun _ -> 
-   whitespace_p >>= fun _ -> *)
+
+let pushP: command parser = 
+  string_match "Push" >>= fun _ -> 
+  whitespace_p >>= fun _ ->
+  constP >>= fun x -> 
+  semicolon_P >>= fun _ ->
+  returnP (Push x)
+
+let popP: command parser = 
+  string_match "Pop" >>= fun _ -> 
+  semicolon_P >>= fun _ ->
+  returnP (Pop)
+
+let addP: command parser = 
+  string_match "Add" >>= fun _ -> 
+  semicolon_P >>= fun _ ->
+  returnP (Add)
+
 
 
 
@@ -239,6 +270,29 @@ let both (p1 : 'a parser) (p2 : 'b parser) : ('a * 'b) parser =
 
 (* Infix operator for both.  *)
 let (+++) = both
+
+(* Map applies a function f to the result of parser p if
+ * it successfully parses its input. *)
+let map (f : 'a -> 'b) (p : 'a parser) : 'b parser =
+  fun ls ->
+  match p ls with
+  | Some (x, ls) -> Some (f x, ls)
+  | None -> None
+
+let parse (c_list:char list) = 
+  (pushP <|> addP) c_list
+
+let parseStringIntoCommands (s:string) = 
+  match (many parse) (explode s) with
+  | Some (command_list, []) -> command_list
+  | _ -> []
+
+(* let rec eval (command_list: command list) (stack) = 
+   match command_list,stack with
+   | Push v::rest, _ -> eval rest (v::stack)
+   | Add::rest,x::Empty::[] -> x
+   |  *)
+
 
 
 
