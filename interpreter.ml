@@ -178,11 +178,10 @@ let natural_numP =
 let intP = 
   natural_numP <|> (charP '-' >>= fun _ -> natural_numP >>= fun n -> returnP (-n))
 
+
 let stringP (str:string): char list parser =
   let len=String.length str in 
-  many whitespace_p >>= fun _ ->   (* get rid of whitespaces before the stuff we want to parse out*)
   readn len >>= fun x->
-  many whitespace_p >>= fun _ -> (* get rid of whitespaces after the stuff we want to parse out*)
   if (explode str)=x then returnP x
   else fail
 
@@ -192,8 +191,16 @@ type const =
 type command = 
     Push of const | Pop | Swap | Log | Add | Sub | Mul | Div | Rem | Neg 
 
+let boolP: bool parser = 
+  (stringP "<true>" >>= fun t -> returnP true) 
+  <|> 
+  (stringP "<false>" >>= fun t -> returnP false)
+
+
 (* let pushP: command parser = 
-   stringP "Push" >>= fun  *)
+   stringP "Push" >>= fun _ -> 
+   whitespace_p >>= fun _ -> *)
+
 
 
 (* Seq is a combinator that sequences 2 combinators.
