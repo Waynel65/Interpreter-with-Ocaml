@@ -149,6 +149,10 @@ let rec many1 (p : 'a parser) : ('a list) parser =
 let is_alpha = function
   'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 
+let is_ASCII x= 
+  let code = (Char.code x) in
+  code != 34
+
 let is_digit = function
   '0' .. '9' -> true | _ -> false
 
@@ -170,6 +174,7 @@ type prog =
 
 let digit_p = sat is_digit
 let letter_p = sat is_alpha
+let ascii_p = sat is_ASCII
 
 (* charP takes in a character and returns a parser that only parses that character*)
 let charP (c : char) : char parser =
@@ -182,7 +187,7 @@ let string_match (str:string): char list parser =
   else fail
 
 let whitespace_p = 
-  charP ' ' <|> charP '\n' <|> charP '\t' <|> charP '\r'
+  charP ' ' <|> charP '\n' <|> charP '\t' <|> charP '\r' <|> charP '\\' <|> charP 'n'
 
 let semicolon_P = 
   charP ';'
@@ -200,7 +205,7 @@ let intP =
 
 let stringP = 
   quoteP >>= fun _ -> 
-  many letter_p >>= fun ls ->
+  many ascii_p >>= fun ls ->
   quoteP >>= fun _ ->
   returnP (implode ls)
 
@@ -224,9 +229,10 @@ let constP: const parser =
   <|>
   (stringP >>= fun x -> returnP (S x))
   <|>
-  (* (nameP >>= fun x -> returnP (N x))
-     <|> *)
+  (nameP >>= fun x -> returnP (N x))
+  <|>
   (unitP >>= fun x -> returnP (U x))
+
 
 (* command parsers below*)
 
@@ -235,51 +241,61 @@ let pushP: command parser =
   whitespace_p >>= fun _ ->
   constP >>= fun x -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Push x)
 
 let popP: command parser = 
   string_match "Pop" >>= fun _ -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Pop)
 
 let swapP: command parser = 
   string_match "Swap" >>= fun _ -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Swap)
 
 let addP: command parser = 
   string_match "Add" >>= fun _ -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Add)
 
 let subP: command parser = 
   string_match "Sub" >>= fun _ -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Sub)
 
 let mulP: command parser = 
   string_match "Mul" >>= fun _ -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Mul)
 
 let divP: command parser = 
   string_match "Div" >>= fun _ -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Div)
 
 let remP: command parser = 
   string_match "Rem" >>= fun _ -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Rem)
 
 let negP: command parser = 
   string_match "Neg" >>= fun _ -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Neg)
 
 let logP: command parser = 
   string_match "Log" >>= fun _ -> 
   semicolon_P >>= fun _ ->
+  many whitespace_p >>= fun _ ->
   returnP (Log)
 
 
