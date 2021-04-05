@@ -73,7 +73,6 @@ let returnP (a: 'a):'a parser =
   match c_list with
   | x::rest -> Some(a,c_list)
   | [] -> Some (a,[])
-  | _ -> None
 
 
 (* TEMPORARY FUNCTION that handles failures of parser*)
@@ -157,11 +156,10 @@ let is_digit = function
 (* this is perhaps not how you would define name*)
 type name = 
     Name of string
+
+
 type const = 
     I of int | B of bool | S of string | N of name | U of unit 
-
-type stack = 
-    Stack of const | Empty
 
 type command = 
     Push of const | Pop | Swap | Log | Add | Sub | Mul | Div | Rem | Neg 
@@ -211,6 +209,8 @@ let boolP: bool parser =
 
 let constP: const parser = 
   (intP >>= fun x -> returnP (I x)) 
+  <|>
+  (boolP >>= fun x -> returnP (B x))
 
 
 
@@ -226,11 +226,45 @@ let popP: command parser =
   semicolon_P >>= fun _ ->
   returnP (Pop)
 
+let swapP: command parser = 
+  string_match "Swap" >>= fun _ -> 
+  semicolon_P >>= fun _ ->
+  returnP (Swap)
+
 let addP: command parser = 
   string_match "Add" >>= fun _ -> 
   semicolon_P >>= fun _ ->
   returnP (Add)
 
+let subP: command parser = 
+  string_match "Sub" >>= fun _ -> 
+  semicolon_P >>= fun _ ->
+  returnP (Sub)
+
+let mulP: command parser = 
+  string_match "Mul" >>= fun _ -> 
+  semicolon_P >>= fun _ ->
+  returnP (Mul)
+
+let divP: command parser = 
+  string_match "Div" >>= fun _ -> 
+  semicolon_P >>= fun _ ->
+  returnP (Div)
+
+let remP: command parser = 
+  string_match "Rem" >>= fun _ -> 
+  semicolon_P >>= fun _ ->
+  returnP (Rem)
+
+let negP: command parser = 
+  string_match "Neg" >>= fun _ -> 
+  semicolon_P >>= fun _ ->
+  returnP (Neg)
+
+let logP: command parser = 
+  string_match "Log" >>= fun _ -> 
+  semicolon_P >>= fun _ ->
+  returnP (Log)
 
 
 
@@ -280,18 +314,59 @@ let map (f : 'a -> 'b) (p : 'a parser) : 'b parser =
   | None -> None
 
 let parse (c_list:char list) = 
-  (pushP <|> addP) c_list
+  (pushP <|> popP <|> swapP <|> addP <|> subP <|> mulP <|> divP <|> remP <|> negP <|> logP) c_list
 
-let parseStringIntoCommands (s:string) = 
+let parseStringIntoCommands (s:string):command list = 
   match (many parse) (explode s) with
   | Some (command_list, []) -> command_list
   | _ -> []
 
-(* let rec eval (command_list: command list) (stack) = 
-   match command_list,stack with
-   | Push v::rest, _ -> eval rest (v::stack)
-   | Add::rest,x::Empty::[] -> x
-   |  *)
+(* 
+let push_eval (command_list: command list) (stack: const list): const list =
+  match command_list,stack with
+  | Push v::rest, _ -> eval rest (v::stack)
+  | _ -> failwith "undefined" *)
+
+
+let rec eval (command_list: command list) (stack: const list): (const list * int) = 
+  match command_list,stack with
+  | [],_ -> (stack,0)
+
+  | Push v::rest, t -> eval rest (v::t)
+
+  | Pop::rest,x::t -> eval rest t
+  | Pop::rest,[] -> ([],2)
+
+  | Swap::rest,x::y::t -> eval rest (y::x::t)
+  | Swap::rest,_ -> (stack,2)
+
+  | Add::rest, (I x)::(I y)::t -> eval rest (I (x+y)::t)
+  | Add::rest, _::_::t -> (stack,1)
+  | Add::rest, _ -> (stack,2)
+
+  | Sub::rest, (I x)::(I y)::t -> eval rest (I (x-y)::t)
+  | Sub::rest, _::_::t -> (stack,1)
+  | Sub::rest, _ -> (stack,2)
+
+  | Mul::rest, (I x)::(I y)::t -> eval rest (I (x*y)::t)
+  | Mul::rest, _::_::t -> (stack,1)
+  | Mul::rest, _ -> (stack,2)
+
+  | Div::rest, (I x)::(I 0)::t -> (stack,3)
+  | Div::rest, (I x)::(I y)::t -> eval rest (I (x/y)::t)
+  | Div::rest, _::_::t -> (stack,1)
+  | Div::rest, _ -> (stack,2)
+
+  | Rem::rest, (I x)::(I 0)::t -> (stack,3)
+  | Rem::rest, (I x)::(I y)::t -> eval rest (I (x mod y)::t)
+  | Rem::rest, _::_::t -> (stack,1)
+  | Rem::rest, _ -> (stack,2)
+
+  | Neg::rest,(I x)::t -> eval rest ((I (-x))::t)
+  | Neg::rest,[] -> ([],2)
+  | Neg::rest,_ -> (stack,1)
+
+  | _ -> failwith "undefined"
 
 
 
@@ -309,6 +384,13 @@ let readlines (file : string) : string =
   let res = loop () in
   let () = close_in fp in
   res
+
+let test (file:string):(const list * int) = 
+  let testx = readlines file in
+  let p = parseStringIntoCommands testx in
+  eval p []
+
+
 
 let runfile (file : string) : string list * int =
   let s = readlines file in
