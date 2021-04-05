@@ -154,12 +154,11 @@ let is_digit = function
 
 
 (* this is perhaps not how you would define name*)
-type name = 
-    Name of string
+
 
 
 type const = 
-    I of int | B of bool | S of string | N of name | U of unit 
+    I of int | B of bool | S of string | N of string | U of unit 
 
 type command = 
     Push of const | Pop | Swap | Log | Add | Sub | Mul | Div | Rem | Neg 
@@ -176,13 +175,20 @@ let letter_p = sat is_alpha
 let charP (c : char) : char parser =
   sat (fun x -> x = c)
 
+let string_match (str:string): char list parser =
+  let len=String.length str in 
+  readn len >>= fun x->
+  if (explode str)=x then returnP x
+  else fail
 
 let whitespace_p = 
   charP ' ' <|> charP '\n' <|> charP '\t' <|> charP '\r'
 
-
 let semicolon_P = 
   charP ';'
+
+let quoteP = 
+  charP '"'
 
 let natural_numP = 
   many1 digit_p >>= fun xs -> returnP (int_of_string (implode xs))
@@ -192,27 +198,37 @@ let natural_numP =
 let intP = 
   natural_numP <|> (charP '-' >>= fun _ -> natural_numP >>= fun n -> returnP (-n))
 
+let stringP = 
+  quoteP >>= fun _ -> 
+  many letter_p >>= fun ls ->
+  quoteP >>= fun _ ->
+  returnP (implode ls)
+
 let nameP = 
-  letter_p >>= fun _ -> (letter_p <|> digit_p <|> charP '_' <|> charP '\'')
-
-
-let string_match (str:string): char list parser =
-  let len=String.length str in 
-  readn len >>= fun x->
-  if (explode str)=x then returnP x
-  else fail
+  letter_p >>= fun x -> 
+  many (letter_p <|> digit_p <|> charP '_' <|> charP '\'') >>= fun y ->
+  returnP (implode (x::y))
 
 let boolP: bool parser = 
-  (string_match "<true>" >>= fun t -> returnP true) 
+  (string_match "<true>" >>= fun _ -> returnP true) 
   <|> 
-  (string_match "<false>" >>= fun t -> returnP false)
+  (string_match "<false>" >>= fun _ -> returnP false)
+
+let unitP: unit parser = 
+  (string_match "<unit>" >>= fun _ -> returnP ()) 
 
 let constP: const parser = 
   (intP >>= fun x -> returnP (I x)) 
   <|>
   (boolP >>= fun x -> returnP (B x))
+  <|>
+  (stringP >>= fun x -> returnP (S x))
+  <|>
+  (* (nameP >>= fun x -> returnP (N x))
+     <|> *)
+  (unitP >>= fun x -> returnP (U x))
 
-
+(* command parsers below*)
 
 let pushP: command parser = 
   string_match "Push" >>= fun _ -> 
@@ -268,110 +284,70 @@ let logP: command parser =
 
 
 
-(* Seq is a combinator that sequences 2 combinators.
- * Suppose we have a parser p1 and a parser p2. After
- * using p1 to parse some input, we want to parse the
- * remaining list of p1 with p2 but only keep the result
- * of p2. Seq fulfills this functionality. *)
-let seq (p1 : 'a parser) (p2 : 'b parser) : 'b parser =
-  fun ls ->
-  match p1 ls with
-  | Some (_, ls) -> p2 ls
-  | None -> None
-
-(* Seq' is similar to seq, but instead of keeping the
- * the result of p2, it keeps the result of p1. 
-   we still have to parse through p1 first then parse through p2*)
-let seq' (p1 : 'a parser) (p2 : 'b parser) : 'a parser =
-  fun ls ->
-  match p1 ls with
-  | Some (x, ls) ->
-    (match p2 ls with
-     | Some (_, ls) -> Some (x, ls)
-     | None -> None)
-  | None -> None
-
-(* Both is similar to seq and seq', but it keeps results
- * of both p1 and p2. *)
-let both (p1 : 'a parser) (p2 : 'b parser) : ('a * 'b) parser =
-  fun ls ->
-  match p1 ls with
-  | Some (x, ls) ->
-    (match p2 ls with
-     | Some (y, ls) -> Some ((x, y), ls)
-     | None -> None)
-  | None -> None
-
-(* Infix operator for both.  *)
-let (+++) = both
-
-(* Map applies a function f to the result of parser p if
- * it successfully parses its input. *)
-let map (f : 'a -> 'b) (p : 'a parser) : 'b parser =
-  fun ls ->
-  match p ls with
-  | Some (x, ls) -> Some (f x, ls)
-  | None -> None
 
 let parse (c_list:char list) = 
   (pushP <|> popP <|> swapP <|> addP <|> subP <|> mulP <|> divP <|> remP <|> negP <|> logP) c_list
 
-let parseStringIntoCommands (s:string):command list = 
+let parseStringIntoCommands (s:string) = 
   match (many parse) (explode s) with
   | Some (command_list, []) -> command_list
   | _ -> []
 
-(* 
-let push_eval (command_list: command list) (stack: const list): const list =
+let const_to_string (c: const):string =
+  match c with
+  | I x -> string_of_int x
+  | B x -> "<" ^ (string_of_bool x) ^ ">"
+  | S x -> "\"" ^ x ^ "\""
+  | U x -> "<unit>"
+  | N x -> x
+
+let rec eval (command_list: command list) (stack: const list)  (log_list:string list): (const list*string list*int) = 
   match command_list,stack with
-  | Push v::rest, _ -> eval rest (v::stack)
-  | _ -> failwith "undefined" *)
+  | [], _-> (stack,log_list,0)
 
+  | Push v::rest, t -> eval rest (v::t) log_list
 
-let rec eval (command_list: command list) (stack: const list): (const list * int) = 
-  match command_list,stack with
-  | [],_ -> (stack,0)
+  | Pop::rest,x::t -> eval rest t log_list
+  | Pop::rest,[] -> ([],log_list,2)
 
-  | Push v::rest, t -> eval rest (v::t)
+  | Swap::rest,x::y::t -> eval rest (y::x::t) log_list
+  | Swap::rest,_ -> (stack,log_list,2)
 
-  | Pop::rest,x::t -> eval rest t
-  | Pop::rest,[] -> ([],2)
+  | Add::rest, (I x)::(I y)::t -> eval rest (I (x+y)::t) log_list
+  | Add::rest, _::_::t -> (stack,log_list,1)
+  | Add::rest, _ -> (stack,log_list,2)
 
-  | Swap::rest,x::y::t -> eval rest (y::x::t)
-  | Swap::rest,_ -> (stack,2)
+  | Sub::rest, (I x)::(I y)::t -> eval rest (I (x-y)::t) log_list
+  | Sub::rest, _::_::t -> (stack,log_list,1)
+  | Sub::rest, _ -> (stack,log_list,2)
 
-  | Add::rest, (I x)::(I y)::t -> eval rest (I (x+y)::t)
-  | Add::rest, _::_::t -> (stack,1)
-  | Add::rest, _ -> (stack,2)
+  | Mul::rest, (I x)::(I y)::t -> eval rest (I (x*y)::t) log_list
+  | Mul::rest, _::_::t -> (stack,log_list,1)
+  | Mul::rest, _ -> (stack,log_list,2)
 
-  | Sub::rest, (I x)::(I y)::t -> eval rest (I (x-y)::t)
-  | Sub::rest, _::_::t -> (stack,1)
-  | Sub::rest, _ -> (stack,2)
+  | Div::rest, (I x)::(I 0)::t -> (stack,log_list,3)
+  | Div::rest, (I x)::(I y)::t -> eval rest (I (x/y)::t) log_list
+  | Div::rest, _::_::t -> (stack,log_list,1)
+  | Div::rest, _ -> (stack,log_list,2)
 
-  | Mul::rest, (I x)::(I y)::t -> eval rest (I (x*y)::t)
-  | Mul::rest, _::_::t -> (stack,1)
-  | Mul::rest, _ -> (stack,2)
+  | Rem::rest, (I x)::(I 0)::t -> (stack,log_list,3)
+  | Rem::rest, (I x)::(I y)::t -> eval rest (I (x mod y)::t) log_list
+  | Rem::rest, _::_::t -> (stack,log_list,1)
+  | Rem::rest, _ -> (stack,log_list,2)
 
-  | Div::rest, (I x)::(I 0)::t -> (stack,3)
-  | Div::rest, (I x)::(I y)::t -> eval rest (I (x/y)::t)
-  | Div::rest, _::_::t -> (stack,1)
-  | Div::rest, _ -> (stack,2)
+  | Neg::rest,(I x)::t -> eval rest ((I (-x))::t) log_list
+  | Neg::rest,[] -> ([],log_list,2)
+  | Neg::rest,_ -> (stack,log_list,1)
 
-  | Rem::rest, (I x)::(I 0)::t -> (stack,3)
-  | Rem::rest, (I x)::(I y)::t -> eval rest (I (x mod y)::t)
-  | Rem::rest, _::_::t -> (stack,1)
-  | Rem::rest, _ -> (stack,2)
-
-  | Neg::rest,(I x)::t -> eval rest ((I (-x))::t)
-  | Neg::rest,[] -> ([],2)
-  | Neg::rest,_ -> (stack,1)
-
-  | _ -> failwith "undefined"
+  | Log::rest,x::t -> eval rest t (log_list@[(const_to_string x)])
+  | Log::rest,[] -> ([],log_list,2)
 
 
 
+let interpreter (s : string) : string list * int = 
+  match (eval (parseStringIntoCommands s) [] []) with
+  | stack,log_list,x -> log_list,x 
 
-let interpreter (s : string) : string list * int = failwith "undefined"
 
 
 let readlines (file : string) : string =
@@ -385,10 +361,10 @@ let readlines (file : string) : string =
   let () = close_in fp in
   res
 
-let test (file:string):(const list * int) = 
+let test (file:string) = 
   let testx = readlines file in
   let p = parseStringIntoCommands testx in
-  eval p []
+  eval p [] []
 
 
 
