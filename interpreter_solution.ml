@@ -22,6 +22,18 @@ type command =
   | Div
   | Rem
   | Neg
+  | Cat
+  | And
+  | Or
+  | Not
+  | Eq
+  | Lte
+  | Lt
+  | Gte
+  | Gt
+  | Let
+  | Ask
+  (* missing begin and if *)
 
 type prog = command list
 
@@ -231,7 +243,20 @@ let rec command () =
   ((keyword "Mul")             << sep >| Mul)    <|>
   ((keyword "Div")             << sep >| Div)    <|>
   ((keyword "Rem")             << sep >| Rem)    <|>
-  ((keyword "Neg")             << sep >| Neg)
+  ((keyword "Neg")             << sep >| Neg)    <|>
+  ((keyword "Cat")             << sep >| Cat)    <|>
+  ((keyword "And")             << sep >| And)    <|>
+  ((keyword "Or")              << sep >|  Or)    <|>
+  ((keyword "Not")             << sep >| Not)    <|>
+  ((keyword "Eq")              << sep >|  Eq)    <|>
+  ((keyword "Lte")             << sep >| Lte)    <|>
+  ((keyword "Lt")              << sep >|  Lt)    <|>
+  ((keyword "Gte")             << sep >| Gte)    <|>
+  ((keyword "Gt")              << sep >|  Gt)    <|>
+  ((keyword "Let")             << sep >| Let)    <|>
+  ((keyword "Ask")             << sep >| Ask)
+
+
 
 let parser = ws >> many' command
 
@@ -250,6 +275,7 @@ and result =
   | TypeError
   | StackError
   | DivError
+  | NotFoundError
 
 and env = (string * value) list
 
@@ -275,69 +301,126 @@ let to_int_result (r : result) : int =
   | TypeError     -> 1
   | StackError    -> 2
   | DivError      -> 3
+  | NotFoundError -> 4
 
-let rec run (p : prog) (st : stack) (log : string list) :
-  string list * result =
+let rec run (p : prog) (st : stack) (log : string list) (mem: env) : string list * result * env =
   match p with
   (* part 1 *)
   | Push cst :: rest ->
     (match cst with
-     | I v -> run rest (I_val v :: st) log
-     | B v -> run rest (B_val v :: st) log
-     | S v -> run rest (S_val v :: st) log
-     | N v -> run rest (N_val v :: st) log
-     | U   -> run rest (U_val   :: st) log)
+     | I v -> run rest (I_val v :: st) log mem
+     | B v -> run rest (B_val v :: st) log mem
+     | S v -> run rest (S_val v :: st) log mem
+     | N v -> run rest (N_val v :: st) log mem
+     | U   -> run rest (U_val   :: st) log mem)
   | Pop :: rest ->
     (match st with
-     | _ :: st -> run rest st log
-     | _ -> log, StackError)
+     | _ :: st -> run rest st log mem
+     | _ -> log, StackError,mem)
   | Swap :: rest ->
     (match st with
-     | x :: y :: st -> run rest (y :: x :: st) log
-     | _ -> log, StackError)
+     | x :: y :: st -> run rest (y :: x :: st) log mem
+     | _ -> log, StackError,mem)
   | Log :: rest ->
     (match st with
-     | x :: st -> run rest st (to_string_value x :: log)
-     | _ -> log, StackError)
+     | x :: st -> run rest st (to_string_value x :: log ) mem
+     | _ -> log, StackError,mem)
   | Add :: rest ->
     (match st with
      | I_val x :: I_val y :: st ->
-       run rest (I_val (x + y) :: st) log
-     | _ :: _ :: st -> log, TypeError
-     | _ -> log, StackError)
+       run rest (I_val (x + y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
   | Sub :: rest ->
     (match st with
      | I_val x :: I_val y :: st ->
-       run rest (I_val (x - y) :: st) log
-     | _ :: _ :: st -> log, TypeError
-     | _ -> log, StackError)
+       run rest (I_val (x - y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
   | Mul :: rest ->
     (match st with
      | I_val x :: I_val y :: st ->
-       run rest (I_val (x * y) :: st) log
-     | _ :: _ :: st -> log, TypeError
-     | _ -> log, StackError)
+       run rest (I_val (x * y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
   | Div :: rest ->
     (match st with
-     | I_val _ :: I_val 0 :: st -> log, DivError
+     | I_val _ :: I_val 0 :: st -> log, DivError,mem
      | I_val x :: I_val y :: st ->
-       run rest (I_val (x / y) :: st) log
-     | _ :: _ :: st -> log, TypeError
-     | _ -> log, StackError)
+       run rest (I_val (x / y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
   | Rem :: rest ->
     (match st with
-     | I_val _ :: I_val 0 :: st -> log, DivError
+     | I_val _ :: I_val 0 :: st -> log, DivError,mem
      | I_val x :: I_val y :: st ->
-       run rest (I_val (x mod y) :: st) log
-     | _ :: _ :: st -> log, TypeError
-     | _ -> log, StackError)
+       run rest (I_val (x mod y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
   | Neg :: rest ->
     (match st with
      | I_val x :: st ->
-       run rest (I_val (-x) :: st) log
-     | _ :: st -> log, TypeError
-     | _ -> log, StackError)
-  | [] -> log, Ok st
+       run rest (I_val (-x) :: st) log mem
+     | _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+
+  (* Part2*)
+  | Cat :: rest -> 
+    (match st with
+     |S_val x:: S_val y :: st ->
+       run rest (S_val (x^y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+  | And :: rest -> 
+    (match st with
+     | B_val x::B_val y :: st -> run rest (B_val (x&&y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem 
+     | _ -> log, StackError,mem) 
+  | Or :: rest -> 
+    (match st with
+     | B_val x::B_val y :: st -> run rest (B_val (x||y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem) 
+  | Not :: rest -> 
+    (match st with
+     | B_val x :: st -> run rest (B_val (not x) :: st) log mem
+     | _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+  | Eq :: rest ->
+    (match st with
+     | I_val x :: I_val y :: st -> run rest (B_val (x = y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+  | Lte :: rest ->
+    (match st with
+     | I_val x :: I_val y :: st -> run rest (B_val (x <= y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+  | Lt :: rest ->
+    (match st with
+     | I_val x :: I_val y :: st -> run rest (B_val (x < y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+  | Gte :: rest ->
+    (match st with
+     | I_val x :: I_val y :: st -> run rest (B_val (x >= y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+  | Gt :: rest ->
+    (match st with
+     | I_val x :: I_val y :: st -> run rest (B_val (x > y) :: st) log mem
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+  | Let :: rest ->
+    (match st with
+     | (N_val n)::v::st -> run rest st log (put mem n v)
+     | _ :: _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+
+
+
+  | [] -> log, Ok st, mem
+  | _ -> failwith "undefined"
 
 (* putting it all together *)
 
@@ -352,21 +435,30 @@ let readlines (file : string) : string =
   let () = close_in fp in
   res
 
-let interpreter (s : string) : string list * int =
-  match parse s parser with
-  | Some (prog, []) ->
-    let (log, ret) = run prog [] [] in
+(* let interpreter (s : string) : string list * int =
+   match parse s parser with
+   | Some (prog, []) ->
+    let (log, ret) = run prog [] [] [] in
     (List.rev log, to_int_result ret)
-  | _ -> failwith "invalid source"
+   | _ -> failwith "invalid source"
 
-let deb prog = let (revlog,stack) = run prog [] [] in (List.rev revlog, stack)
+   let deb prog = let (revlog,stack) = run prog [] [] [] in ((List.rev revlog), stack) *)
 
-let debug (s: string) = 
+(* let debug (s: string) = 
+   match parse s parser with
+   | Some (prog,[]) -> deb prog
+   | _ -> failwith "undefined" *)
+
+let deb_w_mem prog = let (revlog,stack,mem) = run prog [] [] [] in ((List.rev revlog), stack,mem)
+
+let debug_w_mem (s:string) = 
   match parse s parser with
-  | Some (prog,[]) -> deb prog
+  | Some (prog,[]) -> deb_w_mem prog
   | _ -> failwith "undefined"
 
+(* let runfile (file : string) : string list * int =
+   let s = readlines file in
+   interpreter s *)
 
-let runfile (file : string) : string list * int =
-  let s = readlines file in
-  interpreter s
+let test = readlines "/home/waynel/cs320/Assignments/input/my_test.txt";;
+debug_w_mem test;;
