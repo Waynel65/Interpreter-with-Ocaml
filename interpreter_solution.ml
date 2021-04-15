@@ -7,7 +7,8 @@ type const =
   | B of bool
   | S of string
   | N of string
-  | U
+  | U 
+  (*U since there is only one value for unit*)
 
 type command =
   (* part 1 *)
@@ -119,6 +120,9 @@ let rec many1 (p : 'a parser) : ('a list) parser =
      | None -> Some (x :: [], ls))
   | None -> None
 
+(* requires unit -> parser function as input
+    useful when dealing with recursive parser 
+*)
 let rec many' (p : unit -> 'a parser) : ('a list) parser =
   fun ls ->
   match p () ls with
@@ -214,7 +218,9 @@ let const =
   (name    >|= (fun x -> N x)) <|>
   (unit    >| U)
 
-let rec command () =
+
+(* the recusive part is being ready for part2*)
+let rec command () = 
   (* part 1 *)
   ((keyword "Push") >> (const) << sep >|= (fun x -> Push x)) <|>
   ((keyword "Pop")             << sep >| Pop)    <|>
@@ -352,6 +358,14 @@ let interpreter (s : string) : string list * int =
     let (log, ret) = run prog [] [] in
     (List.rev log, to_int_result ret)
   | _ -> failwith "invalid source"
+
+let deb prog = let (revlog,stack) = run prog [] [] in (List.rev revlog, stack)
+
+let debug (s: string) = 
+  match parse s parser with
+  | Some (prog,[]) -> deb prog
+  | _ -> failwith "undefined"
+
 
 let runfile (file : string) : string list * int =
   let s = readlines file in
