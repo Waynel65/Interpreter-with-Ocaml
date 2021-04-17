@@ -1,0 +1,126 @@
+Push 5;
+Push x;
+Let;
+Push 0;
+Push x;
+Ask;
+Eq;
+If
+  Begin
+    Push <unit>;
+    Push "0";
+    Log;
+    Push <unit>;
+    Push 1;
+    Push x;
+    Ask;
+    Add;
+    Push x;
+    Let;
+  End;
+Else
+  Push 1;
+  Push x;
+  Ask;
+  Eq;
+  If
+    Begin
+      Push <unit>;
+      Push "1";
+      Log;
+      Push <unit>;
+      Push 1;
+      Push x;
+      Ask;
+      Add;
+      Push x;
+      Let;
+    End;
+  Else
+    Push 2;
+    Push x;
+    Ask;
+    Eq;
+    If
+      Begin
+        Push <unit>;
+        Push "2";
+        Log;
+        Push <unit>;
+        Push 1;
+        Push x;
+        Ask;
+        Add;
+        Push x;
+        Let;
+      End;
+    Else
+      Push 3;
+      Push x;
+      Ask;
+      Eq;
+      If
+        Begin
+          Push <unit>;
+          Push "3";
+          Log;
+          Push <unit>;
+          Push 1;
+          Push x;
+          Ask;
+          Add;
+          Push x;
+          Let;
+        End;
+      Else
+        Push 4;
+        Push x;
+        Ask;
+        Eq;
+        If
+          Begin
+            Push <unit>;
+            Push "4";
+            Log;
+            Push <unit>;
+            Push 1;
+            Push x;
+            Ask;
+            Add;
+            Push x;
+            Let;
+          End;
+        Else
+          Push 5;
+          Push x;
+          Ask;
+          Eq;
+          If
+            Begin
+              Push <unit>;
+              Push "5";
+              Log;
+              Push <unit>;
+              Push 1;
+              Push x;
+              Ask;
+              Add;
+              Push x;
+              Let;
+            End;
+          Else
+            Push <unit>;
+          End;
+        End;
+      End;
+    End;
+  End;
+End;
+Push x;
+Ask;
+Log;
+Push <unit>;
+
+------------------------------
+
+(["\"5\""; "5"], 0)

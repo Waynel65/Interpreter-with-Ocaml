@@ -1,0 +1,43 @@
+Push 3;
+Push 2;
+Push 1;
+Add;
+Add;
+Push x;
+Let;
+Push 5;
+Push x;
+Ask;
+Lt;
+Push x;
+Ask;
+Push 0;
+Lt;
+And;
+If
+  Begin
+    Push <unit>;
+    Push 0;
+    Push x;
+    Let;
+    Push x;
+    Ask;
+    Log;
+    Push <unit>;
+  End;
+Else
+  Begin
+    Push <unit>;
+    Push 1;
+    Push x;
+    Let;
+    Push x;
+    Ask;
+    Log;
+    Push <unit>;
+  End;
+End;
+
+------------------------------
+
+(["1"], 0)

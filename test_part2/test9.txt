@@ -1,0 +1,28 @@
+Begin
+  Push <unit>;
+  Begin
+    Push <unit>;
+    Begin
+      Push <unit>;
+      Push "499";
+      Push Play_sta'TioN_5';
+      Let;
+      Push Play_sta'TioN_5';
+      Ask;
+      Push XbOx_'SerIes'_x;
+      Let;
+      Push XbOx_'SerIes'_x;
+      Ask;
+      Log;
+      Push 0;
+      Push 300;
+      Rem;
+      Log;
+      Push <unit>;
+    End;
+  End;
+End;
+
+------------------------------
+
+(["\"499\""], 3)

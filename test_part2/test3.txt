@@ -1,0 +1,21 @@
+Begin
+  Push <unit>;
+  Push 2;
+  Push x;
+  Let;
+  Push x;
+  Ask;
+  Log;
+  Push <unit>;
+End;
+Push x;
+Ask;
+Push x;
+Ask;
+Add;
+Log;
+Push <unit>;
+
+------------------------------
+
+(["2"], 4)

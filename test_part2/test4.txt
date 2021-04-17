@@ -1,0 +1,34 @@
+Push "hello";
+Push x;
+Let;
+Push " ";
+Push y;
+Let;
+Push "world";
+Push z;
+Let;
+Begin
+  Push <unit>;
+  Push z;
+  Ask;
+  Push y;
+  Ask;
+  Push x;
+  Ask;
+  Cat;
+  Cat;
+  Push x;
+  Let;
+  Push x;
+  Ask;
+  Log;
+  Push <unit>;
+End;
+Push x;
+Ask;
+Log;
+Push <unit>;
+
+------------------------------
+
+(["\"hello world\""; "\"hello\""], 0)

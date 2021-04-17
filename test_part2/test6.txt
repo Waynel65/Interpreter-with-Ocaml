@@ -1,0 +1,15 @@
+Push 100;
+If
+  Begin
+    Push <unit>;
+    Push "abc";
+    Log;
+    Push <unit>;
+  End;
+Else
+  Push <unit>;
+End;
+
+------------------------------
+
+([], 1)

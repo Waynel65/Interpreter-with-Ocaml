@@ -1,0 +1,36 @@
+Push 1;
+Push x;
+Let;
+Push 2;
+Push y;
+Let;
+Push y;
+Ask;
+Push x;
+Ask;
+Lte;
+If
+  Push x;
+  Ask;
+  Log;
+  Push "<=";
+  Log;
+  Push y;
+  Ask;
+  Log;
+  Push <unit>;
+Else
+  Push y;
+  Ask;
+  Log;
+  Push "<";
+  Log;
+  Push x;
+  Ask;
+  Log;
+  Push <unit>;
+End;
+
+------------------------------
+
+(["1"; "\"<=\""; "2"], 0)

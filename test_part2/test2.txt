@@ -1,0 +1,30 @@
+Push 2;
+Push x;
+Let;
+Begin
+  Push <unit>;
+  Push 3;
+  Push x;
+  Let;
+  Push x;
+  Ask;
+  Push x;
+  Ask;
+  Add;
+  Push x;
+  Let;
+  Push "inner scope";
+  Log;
+  Push x;
+  Ask;
+  Log;
+  Push <unit>;
+End;
+Push x;
+Ask;
+Log;
+Push <unit>;
+
+------------------------------
+
+(["\"inner scope\""; "6"; "2"], 0)

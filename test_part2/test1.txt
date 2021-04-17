@@ -1,0 +1,23 @@
+Push 2;
+Push 1;
+Add;
+Push x;
+Let;
+Push x;
+Ask;
+Push x;
+Ask;
+Add;
+Push y;
+Let;
+Push x;
+Ask;
+Log;
+Push y;
+Ask;
+Log;
+Push <unit>;
+
+------------------------------
+
+(["3"; "6"], 0)
