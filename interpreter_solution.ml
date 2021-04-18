@@ -33,7 +33,8 @@ type command =
   | Gt
   | Let
   | Ask
-  (* missing begin and if *)
+  | BeginEnd of (command list)
+  | IfElse of (command list * command list)
 
 type prog = command list
 
@@ -254,7 +255,10 @@ let rec command () =
   ((keyword "Gte")             << sep >| Gte)    <|>
   ((keyword "Gt")              << sep >|  Gt)    <|>
   ((keyword "Let")             << sep >| Let)    <|>
-  ((keyword "Ask")             << sep >| Ask)
+  ((keyword "Ask")             << sep >| Ask)    <|>
+  ((keyword "Begin") >> (many' command) << (keyword "End") << sep >|= (fun x -> BeginEnd x)) <|>
+  (((keyword "If") >> (many' command)) +++ ((keyword "Else") >> (many' command) << (keyword "End") << sep) >|= (fun x -> IfElse x))
+
 
 
 
@@ -302,6 +306,8 @@ let to_int_result (r : result) : int =
   | StackError    -> 2
   | DivError      -> 3
   | NotFoundError -> 4
+
+
 
 let rec run (p : prog) (st : stack) (log : string list) (mem: env) : string list * result * env =
   match p with
@@ -416,11 +422,36 @@ let rec run (p : prog) (st : stack) (log : string list) (mem: env) : string list
      | (N_val n)::v::st -> run rest st log (put mem n v)
      | _ :: _ :: st -> log, TypeError,mem
      | _ -> log, StackError,mem)
+  | Ask :: rest ->
+    (match st with
+     | (N_val n)::st -> 
+       (match lookup mem n with
+        | Some v -> run rest (v::st) log mem
+        | None -> log, NotFoundError, mem)
+     | _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
+  |BeginEnd cmd_list :: rest -> 
+    (match (begin_end_env cmd_list [] [] mem) with
+     | (v,Ok _,sub_log) -> run rest (v::st) (sub_log@log) mem   (* sub_log from innerscope of beginEnd concaenated with main log*)
+     | (_,error,sub_log) -> (sub_log@log), error, mem)    (* sub_log from innerscope of beginEnd concaenated with main log*)
+  (* | IfElse (cmd_list1,cmd_list2) :: rest ->  *)
 
 
 
   | [] -> log, Ok st, mem
   | _ -> failwith "undefined"
+
+and 
+
+  begin_end_env (p: prog) (st: stack) (log: string list) (e: env) : (value * result * string list) = 
+  match run p st log e with
+  | (log,result,_) -> 
+    match result with
+    | Ok [] -> (U_val, StackError,log)
+    | Ok (x::rest) -> (x, Ok st,log)
+    | error -> (U_val, error,log)
+
+
 
 (* putting it all together *)
 
@@ -461,4 +492,5 @@ let debug_w_mem (s:string) =
    interpreter s *)
 
 let test = readlines "/home/waynel/cs320/Assignments/input/my_test.txt";;
+(* let cmd_result = parser (explode test);; *)
 debug_w_mem test;;
