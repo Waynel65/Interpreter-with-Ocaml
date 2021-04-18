@@ -434,12 +434,13 @@ let rec run (p : prog) (st : stack) (log : string list) (mem: env) : string list
     (match (begin_end_env cmd_list [] [] mem) with
      | (v,Ok _,sub_log) -> run rest (v::st) (sub_log@log) mem   (* sub_log from innerscope of beginEnd concaenated with main log*)
      | (_,error,sub_log) -> (sub_log@log), error, mem)    (* sub_log from innerscope of beginEnd concaenated with main log*)
-  (* | IfElse (cmd_list1,cmd_list2) :: rest ->  *)
-
-
-
+  | IfElse (cmd_list1,cmd_list2) :: rest -> 
+    (match st with
+     | (B_val true) :: st -> run (cmd_list1@rest) st log mem
+     | (B_val false) :: st -> run (cmd_list2@rest) st log mem
+     | _ :: st -> log, TypeError,mem
+     | _ -> log, StackError,mem)
   | [] -> log, Ok st, mem
-  | _ -> failwith "undefined"
 
 and 
 
@@ -466,19 +467,19 @@ let readlines (file : string) : string =
   let () = close_in fp in
   res
 
-(* let interpreter (s : string) : string list * int =
-   match parse s parser with
-   | Some (prog, []) ->
-    let (log, ret) = run prog [] [] [] in
+let interpreter (s : string) : string list * int =
+  match parse s parser with
+  | Some (prog, []) ->
+    let (log, ret, _) = run prog [] [] [] in
     (List.rev log, to_int_result ret)
-   | _ -> failwith "invalid source"
+  | _ -> failwith "invalid source"
 
-   let deb prog = let (revlog,stack) = run prog [] [] [] in ((List.rev revlog), stack) *)
+let deb prog = let (revlog,stack,_) = run prog [] [] [] in ((List.rev revlog), stack)
 
-(* let debug (s: string) = 
-   match parse s parser with
-   | Some (prog,[]) -> deb prog
-   | _ -> failwith "undefined" *)
+let debug (s: string) = 
+  match parse s parser with
+  | Some (prog,[]) -> deb prog
+  | _ -> failwith "undefined"
 
 let deb_w_mem prog = let (revlog,stack,mem) = run prog [] [] [] in ((List.rev revlog), stack,mem)
 
@@ -487,10 +488,9 @@ let debug_w_mem (s:string) =
   | Some (prog,[]) -> deb_w_mem prog
   | _ -> failwith "undefined"
 
-(* let runfile (file : string) : string list * int =
-   let s = readlines file in
-   interpreter s *)
+let runfile (file : string) : string list * int =
+  let s = readlines file in
+  interpreter s
 
-let test = readlines "/home/waynel/cs320/Assignments/input/my_test.txt";;
+let test = runfile "/home/waynel/cs320/Assignments/input/my_test.txt";;
 (* let cmd_result = parser (explode test);; *)
-debug_w_mem test;;
