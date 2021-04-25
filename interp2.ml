@@ -2,6 +2,7 @@ open Printf
 
 (* language syntax *)
 
+
 type const =
   | I of int
   | B of bool
@@ -35,6 +36,11 @@ type command =
   | Ask
   | Block of command list
   | Ifte of (command list * command list)
+  (* part 3*)
+  | Call
+  | Throw
+  | DefFun of (string * string * command list)
+  | TryCatch of (command list * command list)
 
 type prog = command list
 
@@ -95,6 +101,18 @@ let both (p1 : 'a parser) (p2 : 'b parser) : ('a * 'b) parser =
      | Some (y, ls) -> Some ((x, y), ls)
      | None -> None)
   | None -> None
+
+let triple (p1 : 'a parser) (p2 : 'b parser) (p3 : 'c parser) : ('a * 'b * 'c) parser =
+  fun ls -> 
+  match p1 ls with
+  | Some (x,ls) -> 
+    (match p2 ls with
+     |Some (y,ls) -> 
+       (match p3 ls with
+        | Some (z,ls) -> Some ((x,y,z),ls)
+        | None -> None)
+     | None -> None)
+  |None -> None
 
 let (+++) = both
 
@@ -253,7 +271,14 @@ let rec command () =
   ((keyword "Let")             << sep >| Let)    <|>
   ((keyword "Ask")             << sep >| Ask)    <|>
   ((block ())                  << sep)           <|>
-  ((ifte ())                   << sep)
+  ((ifte ())                   << sep)           <|>
+  (*part3*)
+  ((keyword "Throw")           << sep >| Throw)  <|>
+  ((keyword "Call")            << sep >| Call)  <|>
+  ((defFun ())                 << sep)           <|>
+  ((trycatch ())               << sep)    
+
+
 
 and block () =
   (keyword "Begin") >> many' command << (keyword "End") >|=
@@ -263,6 +288,15 @@ and ifte () =
   ((keyword "If") >> many' command) +++
   ((keyword "Else") >> many' command) << (keyword "End") >|=
   (fun (cmds1, cmds2) -> Ifte (cmds1, cmds2))
+
+and defFun () = 
+  ((keyword "DefFun") >> (triple name name (many' command)) << (keyword "End")) >|=
+  (fun (fname,arg,cmds) -> DefFun (fname, arg, cmds))
+
+and trycatch () = 
+  ((keyword "Try") >> many' command) +++
+  ((keyword "Catch") >> many' command) << (keyword "End") >|=
+  (fun (cmds1, cmds2) -> TryCatch (cmds1, cmds2))
 
 let parser = ws >> many' command
 
@@ -282,8 +316,11 @@ and result =
   | StackError
   | DivError
   | UnboundError
+  | UserError of int
 
 and env = (string * value) list
+
+and func = (env * string * string * command list)
 
 and stack = value list
 
@@ -308,6 +345,7 @@ let to_int_result (r : result) : int =
   | StackError    -> 2
   | DivError      -> 3
   | UnboundError  -> 4
+  | UserError x   -> x
 
 let rec run (p : prog) (st : stack) (e : env) (log : string list) :
   string list * result =
@@ -453,6 +491,7 @@ let rec run (p : prog) (st : stack) (e : env) (log : string list) :
      | _ :: st -> log, TypeError
      | _ -> log, StackError)
   | [] -> log, Ok st
+  | _ -> failwith "undefined"
 
 (* putting it all together *)
 
